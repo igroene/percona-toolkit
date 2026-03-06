@@ -72,6 +72,12 @@ func main() {
 		kong.Vars{"version": fmt.Sprintf("%s\nVersion %s\nBuild: %s using %s\nCommit: %s",
 			toolname, Version, Build, GoVersion, Commit)})
 
+	cmd := kongctx.Command()
+	if cmd != "check-unused" && cmd != "check-duplicates" && cmd != "check-all" {
+		kongctx.PrintUsage(false)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -81,7 +87,11 @@ func main() {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(args.URI))
 	if err != nil {
-		log.Fatalf("Cannot connect to the database: %q", err)
+		log.Fatalf("Cannot connect to the database: %s", err)
+	}
+
+	if err = client.Ping(ctx, nil); err != nil {
+		log.Fatalf("Cannot connect to the database: %s", err)
 	}
 
 	if args.AllDatabases {
@@ -96,7 +106,7 @@ func main() {
 
 	resp := response{}
 
-	switch kongctx.Command() {
+	switch cmd {
 	case "check-unused":
 		resp.Unused = findUnused(ctx, client, args.Databases, args.Collections)
 	case "check-duplicates":
@@ -104,9 +114,6 @@ func main() {
 	case "check-all":
 		resp.Unused = findUnused(ctx, client, args.Databases, args.Collections)
 		resp.Duplicated = findDuplicated(ctx, client, args.Databases, args.Collections)
-	default:
-		kongctx.PrintUsage(false)
-		return
 	}
 
 	fmt.Println(output(resp, args.JSON))

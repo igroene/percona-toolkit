@@ -20,6 +20,21 @@ import (
 	"testing"
 )
 
+// TestConnectionFailure verifies that the tool reports an error when the MongoDB connection fails.
+func TestConnectionFailure(t *testing.T) {
+	// Use a port that is not listening to simulate a connection failure.
+	badURI := "mongodb://127.0.0.1:19999"
+	cmd := exec.Command("../../../bin/"+toolname, "--mongodb.uri", badURI, "check-all", "--all-databases")
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Errorf("expected %s to exit with an error when MongoDB is unreachable, but it exited successfully", toolname)
+	}
+	want := "Cannot connect to the database"
+	if !strings.Contains(string(out), want) {
+		t.Errorf("expected output to contain %q when MongoDB is unreachable, got: %q", want, string(out))
+	}
+}
+
 /*
 Option --version
 */
